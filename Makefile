@@ -43,6 +43,8 @@ NAME1 := main
 # by space.
 NAMES := ${NAME1}
 
+LIBS += -lpthread
+
 ################################################################################
 # Configs
 ################################################################################
@@ -64,7 +66,7 @@ VERBOSE := 1
 # in others. If for example you just want to clean the root directory the clean
 # rule will be executed in any other makefile specified. You can deactivate the
 # creation of these targets by setting the bellow variable to 0.
-CREATE_LIB_TARGETS := 1
+CREATE_LIB_TARGETS := 0
 
 # Pedantic allows for extra warning flags to be used while compiling. If set to
 # true these flags are applied. If set to anything else the flags will not be
@@ -142,8 +144,8 @@ LIBFT_ROOT := ${LIB_ROOT}libft/
 LIBFT_INC := ${LIBFT_ROOT}inc/
 LIBFT := ${LIBFT_ROOT}bin/libft.a
 
-INC_DIRS += ${LIBFT_INC}
-LIBS += -L${LIBFT_ROOT}bin -lft
+# INC_DIRS += ${LIBFT_INC}
+# LIBS += -L${LIBFT_ROOT}bin -lft
 
 # Libraries for which to create default targets. All libraries in this list will
 # have targets created autimatically. The targets that are created are set in
@@ -213,8 +215,24 @@ BINS := ${addprefix ${BIN_ROOT},${NAMES}}
 ################################################################################
 
 ifeq ($(shell uname),Linux)
+	MLX_LIB_ROOT := ${LIB_ROOT}minilibx-linux/
+	MLX_LIB := ${MLX_LIB_ROOT}libmlx.a
+	INCS += -I${MLX_LIB_ROOT}
+	LIBS += -L${MLX_LIB_ROOT} -lmlx
+	LIBS += -L/usr/lib -lXext -lX11 -lm -lz
 	SED := sed -i.tmp --expression
 else ifeq ($(shell uname),Darwin)
+	ifeq (${MLX}, opengl)
+		MLX_LIB_ROOT := ${LIB_ROOT}minilibx_opengl_20191021/
+		LIBS += -L${MLX_LIB_ROOT} -lmlx
+		LIBS += -framework OpenGL -framework AppKit -lz
+		MLX_LIB := ${MLX_LIB_ROOT}libmlx.dylib
+	else ifeq (${MLX}, mms)
+		MLX_LIB_ROOT := ${LIB_ROOT}minilibx_mms_20200219/
+		LIBS += -L${MLX_LIB_ROOT} -lmlx
+		MLX_LIB := ${MLX_LIB_ROOT}libmlx.dylib
+	endif
+	INCS += $(addprefix -I, ${MLX_LIB_ROOT})
 	SED := sed -i.tmp
 endif
 
@@ -249,11 +267,13 @@ vpath %.d $(DEP_DIRS)
 all: ${BINS}
 
 .SECONDEXPANSION:
-${BIN_ROOT}${NAME1}: ${LIBFT} $$(call get_files,$${@F},$${OBJS_LIST})
+${BIN_ROOT}${NAME1}: ${MLX_LIB} $$(call get_files,$${@F},$${OBJS_LIST})
 	${AT}printf "\033[33m[CREATING ${@F}]\033[0m\n" ${BLOCK}
 	${AT}mkdir -p ${@D} ${BLOCK}
 	${AT}${CC} ${CFLAGS} ${INCS} ${ASAN_FILE}\
 		$(call get_files,${@F},${OBJS_LIST}) ${LIBS} -o $@ ${BLOCK}
+
+${MLX_LIB}: ; make -C ${MLX_LIB_ROOT}
 
 ${LIBFT}: $$(call get_lib_target,$${DEFAULT_LIBS},all) ;
 
